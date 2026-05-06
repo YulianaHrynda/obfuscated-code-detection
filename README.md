@@ -122,6 +122,39 @@ Per-technique (accuracy):
 └── reports/               # markdown + PDF звіти
 ```
 
+## Pre-install scanner
+
+Утиліта `src/scan/scan_package.py` використовує augmented-модель для перевірки PyPI-пакетів **до** встановлення. Скачує через `pip download --no-deps`, розпаковує, скорить кожен `.py` файл, видає verdict.
+
+```bash
+# Перевірити пакет з PyPI без встановлення
+python3 -m src.scan.scan_package --name requests
+python3 -m src.scan.scan_package --name suspicious-pkg==1.2.3
+
+# Локальний архів / директорія / .py-файл
+python3 -m src.scan.scan_package --file ./dist/mypkg-0.1.0.tar.gz
+python3 -m src.scan.scan_package --file ./my_package_src/
+python3 -m src.scan.scan_package --file ./suspicious.py
+
+# JSON-вихід для CI/CD
+python3 -m src.scan.scan_package --name requests --json
+```
+
+**Exit codes:** `0` SAFE, `1` SUSPICIOUS, `2` BLOCK, `3` ERROR — зручно для pre-install hooks і CI.
+
+**Приклад виводу на real DataDog malware:**
+```
+Top files by malicious score:
+   score  path                            parses
+   0.998  malreal_00002.py                yes  <- MALICIOUS
+   0.997  malreal_00001.py                yes  <- MALICIOUS
+   ...
+
+VERDICT: BLOCK
+```
+
+Потребує `artifacts/augmented_model.pkl` — створіть його через `notebooks/baseline_simple.ipynb` (або відповідний training script).
+
 ## Інтерпретація + застереження
 
 1. **`marshal_wrap` recall = 79%** — після augmented training модель навчилась, що marshal-wrapping буває і у benign (наш wrapper для CSV-парсера), тому деякі справжні malicious-payloads, що покладаються тільки на marshal+exec, тепер проходять. У production треба окремий downstream-аналіз для marshal-content (entropy, unpack & re-scan).
