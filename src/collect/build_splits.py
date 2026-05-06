@@ -37,25 +37,18 @@ def stratified_split(records: list[dict], ratios=(0.8, 0.1, 0.1), seed: int = 0)
 
 def main() -> None:
     benign_synth = load_manifest(SPLITS / "benign_manifest.jsonl")
-    amb_path = SPLITS / "benign_ambiguous_manifest.jsonl"
-    benign_amb = load_manifest(amb_path) if amb_path.exists() else []
-    real_b_path = SPLITS / "benign_real_manifest.jsonl"
-    benign_real = load_manifest(real_b_path) if real_b_path.exists() else []
-    mal_synth = load_manifest(SPLITS / "malicious_manifest.jsonl")
-    real_path = SPLITS / "malicious_real_manifest.jsonl"
-    mal_real = load_manifest(real_path) if real_path.exists() else []
+    benign_amb  = load_manifest(SPLITS / "benign_ambiguous_manifest.jsonl") if (SPLITS / "benign_ambiguous_manifest.jsonl").exists() else []
+    benign_real = load_manifest(SPLITS / "benign_real_manifest.jsonl")      if (SPLITS / "benign_real_manifest.jsonl").exists()      else []
+    benign_pypi = load_manifest(SPLITS / "benign_pypi_manifest.jsonl")      if (SPLITS / "benign_pypi_manifest.jsonl").exists()      else []
+    mal_synth   = load_manifest(SPLITS / "malicious_manifest.jsonl")
+    mal_real    = load_manifest(SPLITS / "malicious_real_manifest.jsonl")   if (SPLITS / "malicious_real_manifest.jsonl").exists()   else []
 
-                                                 
     for r in benign_synth:
         r.setdefault("source", "synthetic")
     for r in mal_synth:
         r.setdefault("source", "synthetic")
 
-                                                                             
-                                                                         
-                                                                        
-                                                                
-    clean = benign_synth + benign_amb + benign_real + mal_synth + mal_real
+    clean = benign_synth + benign_amb + benign_real + benign_pypi + mal_synth + mal_real
     train, val, test = stratified_split(clean)
     write_jsonl(SPLITS / "clean_train.jsonl", train)
     write_jsonl(SPLITS / "clean_val.jsonl", val)
