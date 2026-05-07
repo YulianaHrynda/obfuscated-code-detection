@@ -155,6 +155,26 @@ VERDICT: BLOCK
 
 Потребує `artifacts/augmented_model.pkl` — створіть його через `notebooks/baseline_simple.ipynb` (або відповідний training script).
 
+### Стратегії агрегації
+
+`--strategy {strict,majority,mean}` керує тим, як per-file бали збираються у вердикт пакета:
+
+- `strict` — будь-який файл ≥ 0.8 → BLOCK (багато false-positive на легіт-пакетах із "шумним" `__init__.py`)
+- `majority` — ≥ 30% файлів вище suspicious-порогу → BLOCK
+- `mean` — середній бал ≥ 0.8 → BLOCK (default; найкращий баланс)
+
+### Бенчмарк (30 топ-PyPI пакетів × 100 DataDog malware-семплів)
+
+| Strategy | TN (benign→SAFE) | FP | FN | TP | Precision | Recall | F1 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `strict` | 7 / 30 | 23 | 0 | 100 | 0.813 | 1.000 | 0.897 |
+| `majority` | 21 / 30 | 9 | 0 | 100 | 0.917 | 1.000 | 0.957 |
+| **`mean`** | **30 / 30** | **0** | **0** | **100** | **1.000** | **1.000** | **1.000** |
+
+`mean` — єдина стратегія без false positive на цій вибірці. У `strict` 23 з 30 легітимних пакетів (numpy, pandas, scipy, django, sqlalchemy, fastapi…) флагуються через один-два "шумних" файли (зазвичай `__init__.py` з `__version__`). У `mean` усі вони SAFE, бо середній бал по сотнях файлів пакета < 0.5.
+
+Запустити: `python3 -m src.scan.benchmark --n-benign 30 --n-malicious 100`. Результати зберігаються в `artifacts/scan_benchmark.{json,csv}`.
+
 ## Інтерпретація + застереження
 
 1. **`marshal_wrap` recall = 79%** — після augmented training модель навчилась, що marshal-wrapping буває і у benign (наш wrapper для CSV-парсера), тому деякі справжні malicious-payloads, що покладаються тільки на marshal+exec, тепер проходять. У production треба окремий downstream-аналіз для marshal-content (entropy, unpack & re-scan).
